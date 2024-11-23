@@ -108,6 +108,38 @@ JSON Response:"""
             reasoning=f"Error analyzing response: {str(e)}"
         )
 
+def summarize_query(text: str, llm: ChatCohere) -> str:
+    """
+    Takes a query and returns a concise, fact-checkable summary.
+    Removes fluff and focuses on the core claims.
+    """
+    prompt = f"""
+You are an expert at condensing text into clear, fact-checkable statements.
+Create a single, concise summary that:
+1. Captures the main factual claims
+2. Removes unnecessary details and opinions
+3. Maintains the core meaning
+4. Uses neutral language
+5. Focuses only on verifiable information
+
+For example:
+Input: "The iPhone was created by Steve Jobs at Apple in 2007, and it was absolutely revolutionary, completely changing how we think about phones forever. It was a game-changer that made Apple tons of money and showed how innovative they are!"
+Output: Apple, under Steve Jobs, launched the iPhone in 2007, which became a successful smartphone product.
+
+Now create a similar summary for this text:
+{text}
+
+Respond with ONLY the summary, no additional text or explanation."""
+
+    try:
+        response = llm.invoke(prompt)
+        summary = response.content.strip()
+        logger.info(f"Summarized query: {summary}")
+        return summary
+    except Exception as e:
+        logger.error(f"Error summarizing query: {e}")
+        return text  # Return original text if summarization fails
+
 @app.route('/invoke', methods=['POST'])
 def invoke_agent():
     try:
@@ -116,22 +148,23 @@ def invoke_agent():
 
         # Validate input data
         input_data = TavilySearchInput(**data)
+        
+        # Create a summary of the query
+        summarized_query = summarize_query(input_data.query, llm)
 
-        # Prepare the input for the agent
+        # Prepare the input for the agent using the summarized query
         agent_input = {
-            "input": input_data.query,
+            "input": summarized_query,  # Use the summarized version for fact-checking
             "preamble": preamble,
         }
 
         # Invoke the agent
         agent_response = agent_executor.invoke(agent_input)
-        
-        # Log the agent's response for debugging
         logger.info(f"Agent response: {agent_response['output']}")
 
-        # Get Tavily search results
+        # Get Tavily search results using the summarized query
         tavily_response = internet_search.invoke(
-            {"query": input_data.query}
+            {"query": summarized_query}
         )
 
         # Analyze if the response is saying true or false
@@ -156,6 +189,8 @@ def invoke_agent():
 
         # Process the response
         formatted_response = {
+            "original_query": input_data.query,
+            "summarized_query": summarized_query,
             "agent_response": agent_response["output"],
             "factuality_analysis": factuality_result,
             "search_results": {
@@ -177,4 +212,4 @@ def invoke_agent():
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)  # Run the Flask app
+    app.run(host='0.0.0.0', port=3001)  # Run the Flask app

@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        padding: 20px;
+        max-width: 600px;
+        margin: 0 auto;
+      }
+
+      .container {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        padding: 20px;
+      }
+
+      .section {
+        margin-bottom: 20px;
+        padding: 15px;
+        border: 1px solid #eee;
+        border-radius: 4px;
+      }
+
+      .section-title {
+        font-weight: bold;
+        margin-bottom: 10px;
+        color: #333;
+      }
+
+      .factual {
+        color: #4caf50;
+      }
+
+      .not-factual {
+        color: #f44336;
+      }
+
+      .sources {
+        font-size: 0.9em;
+        color: #666;
+      }
+
+      .source-link {
+        color: #2196f3;
+        text-decoration: none;
+      }
+
+      .source-link:hover {
+        text-decoration: underline;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="section">
+        <div class="section-title">Original Text:</div>
+        <div id="original-query"></div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Summary:</div>
+        <div id="summarized-query"></div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Analysis:</div>
+        <div id="factuality-result"></div>
+        <div id="confidence"></div>
+        <div id="reasoning"></div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Sources:</div>
+        <div id="sources"></div>
+      </div>
+    </div>
+    <script src="modal.js"></script>
+  </body>
+</html>
