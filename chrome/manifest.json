@@ -17,8 +17,8 @@
     },
     "show-transcription": {
       "suggested_key": {
-        "default": "Ctrl+N",
-        "mac": "Command+N"
+        "default": "Ctrl+I",
+        "mac": "Command+I"
       },
       "description": "Show transcription panel"
     }
