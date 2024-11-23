@@ -213,6 +213,111 @@ async function showResults(tab, data) {
   });
 }
 
+// Add new CSS for the transcription panel
+async function injectTranscriptionPanelCSS(tab) {
+  await chrome.scripting.insertCSS({
+    target: { tabId: tab.id },
+    css: `
+      .transcription-panel {
+        position: fixed;
+        right: 0;
+        top: 0;
+        width: 300px;
+        height: 100vh;
+        background: white;
+        box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+        z-index: 999998;
+        padding: 20px;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        overflow-y: auto;
+      }
+
+      .transcription-panel-header {
+        font-size: 1.2em;
+        font-weight: 700;
+        color: #333;
+        margin-bottom: 16px;
+        padding-bottom: 8px;
+        border-bottom: 2px solid #e0e0e0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .transcription-close {
+        cursor: pointer;
+        font-size: 20px;
+        color: #666;
+        transition: color 0.2s ease;
+      }
+
+      .transcription-close:hover {
+        color: #333;
+      }
+
+      .transcription-content {
+        white-space: pre-wrap;
+        line-height: 1.5;
+        color: #444;
+      }
+    `,
+  });
+}
+
+// Function to show transcription panel
+async function showTranscriptionPanel(tab) {
+  await injectTranscriptionPanelCSS(tab);
+
+  await chrome.scripting.executeScript({
+    target: { tabId: tab.id },
+    func: () => {
+      // Remove existing panel if it exists
+      const existingPanel = document.querySelector(".transcription-panel");
+      if (existingPanel) {
+        existingPanel.remove();
+        return;
+      }
+
+      // Create new panel
+      const panel = document.createElement("div");
+      panel.className = "transcription-panel";
+      panel.innerHTML = `
+        <div class="transcription-panel-header">
+          <span>Live Transcription</span>
+          <span class="transcription-close" onclick="this.closest('.transcription-panel').remove()">&times;</span>
+        </div>
+        <div class="transcription-content"></div>
+      `;
+      document.body.appendChild(panel);
+
+      // Start polling for transcription
+      const updateTranscription = async () => {
+        try {
+          const response = await fetch(
+            "http://localhost:3002/api/transcription"
+          );
+          if (!response.ok) throw new Error("Failed to fetch transcription");
+          const data = await response.json();
+          const content = panel.querySelector(".transcription-content");
+          content.textContent =
+            data.transcription || "No transcription available";
+        } catch (error) {
+          console.error("Transcription error:", error);
+        }
+      };
+
+      // Initial fetch
+      updateTranscription();
+
+      // Set up polling interval
+      const intervalId = setInterval(updateTranscription, 15000);
+
+      // Store interval ID for cleanup
+      panel.dataset.intervalId = intervalId;
+    },
+  });
+}
+
 chrome.commands.onCommand.addListener(async (command) => {
   if (command === "process-selection") {
     try {
@@ -267,6 +372,23 @@ chrome.commands.onCommand.addListener(async (command) => {
         iconUrl: "icon48.png",
         title: "Error",
         message: `Error: ${error.message}`,
+      });
+    }
+  } else if (command === "show-transcription") {
+    try {
+      const [tab] = await chrome.tabs.query({
+        active: true,
+        currentWindow: true,
+      });
+      if (!tab?.id) throw new Error("No active tab found");
+      await showTranscriptionPanel(tab);
+    } catch (error) {
+      console.error("Error showing transcription:", error);
+      chrome.notifications.create({
+        type: "basic",
+        iconUrl: "icon48.png",
+        title: "Error",
+        message: `Error showing transcription: ${error.message}`,
       });
     }
   }
