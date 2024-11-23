@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "Text Selection API Caller",
+  "version": "1.0",
+  "description": "Process selected text with API on CTRL+M",
+  "permissions": ["activeTab", "scripting", "notifications"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "commands": {
+    "process-selection": {
+      "suggested_key": {
+        "default": "Ctrl+M",
+        "mac": "Command+M"
+      },
+      "description": "Process selected text"
+    }
+  }
+}
