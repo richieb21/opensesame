@@ -1,7 +1,10 @@
-import React from "react";
+import React, { useState } from "react";
 import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 
 const LandingPage = () => {
+  const navigate = useNavigate();
+
   return (
     <div className="min-h-screen bg-white">
       <motion.header
@@ -90,16 +93,17 @@ const LandingPage = () => {
             Contact us
           </motion.button>
           <motion.button
+            onClick={() => navigate("/demo")}
             className="px-6 py-3 bg-black text-white rounded-md hover:bg-gray-800 transition-colors"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
-            Learn more
+            Demo
           </motion.button>
         </motion.div>
       </main>
 
-      <section className="container mx-auto px-6 py-24">
+      <section className="container mx-auto px-6">
         <motion.h2
           className="text-6xl font-bold mb-16 text-center"
           initial={{ opacity: 0, y: 20 }}
