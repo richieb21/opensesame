@@ -121,6 +121,7 @@ Create a single, concise summary that:
 3. Maintains the core meaning
 4. Uses neutral language
 5. Focuses only on verifiable information
+6. Absolutely DOES NOT change the meaning of the original text
 
 For example:
 Input: "The iPhone was created by Steve Jobs at Apple in 2007, and it was absolutely revolutionary, completely changing how we think about phones forever. It was a game-changer that made Apple tons of money and showed how innovative they are!"
@@ -149,12 +150,18 @@ def invoke_agent():
         # Validate input data
         input_data = TavilySearchInput(**data)
         
-        # Create a summary of the query
-        summarized_query = summarize_query(input_data.query, llm)
+        # Only summarize if text is longer than 100 characters
+        query_for_checking = input_data.query
+        if len(input_data.query) > 100:
+            summarized_query = summarize_query(input_data.query, llm)
+            logger.info("Text longer than 100 chars - summarizing")
+        else:
+            summarized_query = input_data.query
+            logger.info("Text shorter than 100 chars - using original")
 
-        # Prepare the input for the agent using the summarized query
+        # Prepare the input for the agent using the appropriate query
         agent_input = {
-            "input": summarized_query,  # Use the summarized version for fact-checking
+            "input": query_for_checking,  # Use original query for fact-checking
             "preamble": preamble,
         }
 
@@ -162,9 +169,9 @@ def invoke_agent():
         agent_response = agent_executor.invoke(agent_input)
         logger.info(f"Agent response: {agent_response['output']}")
 
-        # Get Tavily search results using the summarized query
+        # Get Tavily search results
         tavily_response = internet_search.invoke(
-            {"query": summarized_query}
+            {"query": query_for_checking}
         )
 
         # Analyze if the response is saying true or false
@@ -190,7 +197,7 @@ def invoke_agent():
         # Process the response
         formatted_response = {
             "original_query": input_data.query,
-            "summarized_query": summarized_query,
+            "summarized_query": summarized_query if len(input_data.query) > 100 else input_data.query,
             "agent_response": agent_response["output"],
             "factuality_analysis": factuality_result,
             "search_results": {

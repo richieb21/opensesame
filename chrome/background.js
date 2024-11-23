@@ -8,21 +8,47 @@ async function showLoadingModal(tab, text) {
         left: 0;
         right: 0;
         bottom: 0;
-        background: rgba(0, 0, 0, 0.5);
+        background: rgba(0, 0, 0, 0.75);
         display: flex;
         justify-content: center;
         align-items: center;
         z-index: 999999;
+        backdrop-filter: blur(3px);
       }
       
       .fact-check-modal {
         background: white;
-        padding: 20px;
-        border-radius: 8px;
-        max-width: 600px;
-        max-height: 80vh;
+        padding: 30px;
+        border-radius: 12px;
+        width: 90%;
+        max-width: 700px;
+        max-height: 85vh;
         overflow-y: auto;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        box-shadow: 0 4px 24px rgba(0,0,0,0.2);
+        position: relative;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      }
+
+      .fact-check-close {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        width: 30px;
+        height: 30px;
+        border-radius: 15px;
+        background: #f5f5f5;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: 20px;
+        color: #666;
+        transition: all 0.2s ease;
+      }
+
+      .fact-check-close:hover {
+        background: #e0e0e0;
+        color: #333;
       }
 
       .fact-check-loading {
@@ -55,6 +81,7 @@ async function showLoadingModal(tab, text) {
       modal.className = "fact-check-overlay";
       modal.innerHTML = `
         <div class="fact-check-modal">
+          <div class="fact-check-close" onclick="document.getElementById('fact-check-overlay').remove()">&times;</div>
           <div class="fact-check-loading">
             <div class="fact-check-spinner"></div>
             <h3>Fact checking the following:</h3>
@@ -69,6 +96,42 @@ async function showLoadingModal(tab, text) {
 }
 
 async function showResults(tab, data) {
+  await chrome.scripting.insertCSS({
+    target: { tabId: tab.id },
+    css: `
+      .fact-check-section {
+        margin-top: 24px;
+      }
+
+      .fact-check-section:first-child {
+        margin-top: 0;
+      }
+
+      .fact-check-heading {
+        font-size: 1.2em;
+        font-weight: 700;
+        color: #333;
+        margin-bottom: 12px;
+        padding-bottom: 8px;
+        border-bottom: 2px solid #e0e0e0;
+      }
+
+      .fact-check-source {
+        padding: 8px 0;
+      }
+
+      .fact-check-source-link {
+        color: #2196F3;
+        text-decoration: none;
+        font-weight: 500;
+      }
+
+      .fact-check-source-link:hover {
+        text-decoration: underline;
+      }
+    `,
+  });
+
   await chrome.scripting.executeScript({
     target: { tabId: tab.id },
     func: (responseData) => {
@@ -77,22 +140,28 @@ async function showResults(tab, data) {
 
       modal.innerHTML = `
         <div style="position: relative;">
-          <div style="position: absolute; top: 10px; right: 10px; cursor: pointer; font-size: 20px;" onclick="document.getElementById('fact-check-overlay').remove()">&times;</div>
+          <div class="fact-check-close" onclick="document.getElementById('fact-check-overlay').remove()">&times;</div>
           
-          <div class="section">
-            <div class="section-title">Original Text:</div>
+          <div class="fact-check-section">
+            <div class="fact-check-heading">Original Text</div>
             <div style="white-space: pre-wrap;">${
               responseData.original_query
             }</div>
           </div>
 
-          <div class="section">
-            <div class="section-title">Summary:</div>
-            <div>${responseData.summarized_query}</div>
-          </div>
+          ${
+            responseData.summarized_query
+              ? `
+            <div class="fact-check-section">
+              <div class="fact-check-heading">Summary</div>
+              <div>${responseData.summarized_query}</div>
+            </div>
+          `
+              : ""
+          }
 
-          <div class="section">
-            <div class="section-title">Analysis:</div>
+          <div class="fact-check-section">
+            <div class="fact-check-heading">Analysis</div>
             <div class="${
               responseData.factuality_analysis.is_factual
                 ? "factual"
@@ -104,24 +173,33 @@ async function showResults(tab, data) {
                   : "Not Factual"
               }
             </div>
-            <div>Confidence: ${(
-              responseData.factuality_analysis.confidence * 100
-            ).toFixed(1)}%</div>
-            <div>Reasoning: ${responseData.factuality_analysis.reasoning}</div>
+            <div style="margin-top: 8px;">
+              <strong>Confidence:</strong> ${(
+                responseData.factuality_analysis.confidence * 100
+              ).toFixed(1)}%
+            </div>
+            <div style="margin-top: 8px;">
+              <strong>Reasoning:</strong> ${
+                responseData.factuality_analysis.reasoning
+              }
+            </div>
           </div>
 
-          <div class="section">
-            <div class="section-title">Sources:</div>
-            ${responseData.search_results.sources
-              .map(
-                (source) => `
-              <div class="source">
-                <a href="${source.url}" target="_blank" class="source-link">${source.url}</a>
-                <p>${source.content}</p>
-              </div>
-            `
-              )
-              .join("<hr>")}
+          <div class="fact-check-section">
+            <div class="fact-check-heading">Sources</div>
+            <div class="fact-check-sources">
+              ${responseData.search_results.sources
+                .map(
+                  (source) => `
+                  <div class="fact-check-source">
+                    <a href="${source.url}" target="_blank" class="fact-check-source-link">
+                      ${source.url}
+                    </a>
+                  </div>
+                `
+                )
+                .join("")}
+            </div>
           </div>
         </div>
       `;
@@ -180,6 +258,7 @@ chrome.commands.onCommand.addListener(async (command) => {
       const data = await response.json();
 
       // Show results
+      console.log("Data:", data);
       await showResults(tab, data);
     } catch (error) {
       console.error("Error:", error);
