@@ -144,61 +144,58 @@ async function showResults(tab, data) {
           
           <div class="fact-check-section">
             <div class="fact-check-heading">Original Text</div>
-            <div style="white-space: pre-wrap;">${
-              responseData.original_query
-            }</div>
+            <div style="white-space: pre-wrap;">${responseData.query}</div>
           </div>
 
-          ${
-            responseData.summarized_query
-              ? `
+          <div class="fact-check-section">
+            <div class="fact-check-heading">Supporting Evidence</div>
+            <div class="fact-check-analysis ${responseData.supporting_evidence.is_factual ? "factual" : "not-factual"}">
+              Verdict: ${responseData.supporting_evidence.is_factual ? "Factual" : "Not Factual"}
+            </div>
+            <div style="margin-top: 8px;">
+              <strong>Confidence:</strong> ${(responseData.supporting_evidence.confidence * 100).toFixed(1)}%
+            </div>
+            <div style="margin-top: 8px;">
+              <strong>Reasoning:</strong> ${responseData.supporting_evidence.reasoning}
+            </div>
             <div class="fact-check-section">
-              <div class="fact-check-heading">Summary</div>
-              <div>${responseData.summarized_query}</div>
-            </div>
-          `
-              : ""
-          }
-
-          <div class="fact-check-section">
-            <div class="fact-check-heading">Analysis</div>
-            <div class="${
-              responseData.factuality_analysis.is_factual
-                ? "factual"
-                : "not-factual"
-            }">
-              Verdict: ${
-                responseData.factuality_analysis.is_factual
-                  ? "Factual"
-                  : "Not Factual"
-              }
-            </div>
-            <div style="margin-top: 8px;">
-              <strong>Confidence:</strong> ${(
-                responseData.factuality_analysis.confidence * 100
-              ).toFixed(1)}%
-            </div>
-            <div style="margin-top: 8px;">
-              <strong>Reasoning:</strong> ${
-                responseData.factuality_analysis.reasoning
-              }
-            </div>
-          </div>
-
-          <div class="fact-check-section">
-            <div class="fact-check-heading">Sources</div>
-            <div class="fact-check-sources">
-              ${responseData.search_results.sources
-                .map(
-                  (source) => `
+              <div class="fact-check-heading">Sources</div>
+              <div class="fact-check-sources">
+                ${responseData.supporting_evidence.sources.map(source => `
                   <div class="fact-check-source">
                     <a href="${source.url}" target="_blank" class="fact-check-source-link">
                       ${source.url}
                     </a>
+                    <p>${source.content}</p>
                   </div>
-                `
-                )
-                .join("")}
+                `).join("")}
+              </div>
+            </div>
+          </div>
+
+          <div class="fact-check-section">
+            <div class="fact-check-heading">Opposing Evidence</div>
+            <div class="fact-check-analysis ${responseData.opposing_evidence.is_factual ? "factual" : "not-factual"}">
+              Verdict: ${responseData.opposing_evidence.is_factual ? "Factual" : "Not Factual"}
+            </div>
+            <div style="margin-top: 8px;">
+              <strong>Confidence:</strong> ${(responseData.opposing_evidence.confidence * 100).toFixed(1)}%
+            </div>
+            <div style="margin-top: 8px;">
+              <strong>Reasoning:</strong> ${responseData.opposing_evidence.reasoning}
+            </div>
+            <div class="fact-check-section">
+              <div class="fact-check-heading">Sources</div>
+              <div class="fact-check-sources">
+                ${responseData.opposing_evidence.sources.map(source => `
+                  <div class="fact-check-source">
+                    <a href="${source.url}" target="_blank" class="fact-check-source-link">
+                      ${source.url}
+                    </a>
+                    <p>${source.content}</p>
+                  </div>
+                `).join("")}
+              </div>
             </div>
           </div>
         </div>

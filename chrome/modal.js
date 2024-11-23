@@ -1,43 +1,56 @@
 // Receive data from the background script
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  console.log(message)
   if (message.type === "API_RESPONSE") {
     const data = message.data;
 
     // Update original query
-    document.getElementById("original-query").textContent = data.original_query;
+    document.getElementById("original-query").textContent = data.query;
 
-    // Update summary
-    document.getElementById("summarized-query").textContent =
-      data.summarized_query;
+    // Update supporting evidence
+    const supportingDiv = document.getElementById("supporting-evidence");
+    supportingDiv.innerHTML = `
+      <div class="fact-check-analysis ${data.supporting_evidence.is_factual ? "factual" : "not-factual"}">
+        Verdict: ${data.supporting_evidence.is_factual ? "Factual" : "Not Factual"}
+      </div>
+      <div><strong>Confidence:</strong> ${(data.supporting_evidence.confidence * 100).toFixed(1)}%</div>
+      <div><strong>Reasoning:</strong> ${data.supporting_evidence.reasoning}</div>
+      <div class="fact-check-section">
+        <div class="fact-check-heading">Sources</div>
+        <div class="fact-check-sources">
+          ${data.supporting_evidence.sources.map(source => `
+            <div class="fact-check-source">
+              <a href="${source.url}" target="_blank" class="fact-check-source-link">
+                ${source.url}
+              </a>
+              <p>${source.content}</p>
+            </div>
+          `).join("")}
+        </div>
+      </div>
+    `;
 
-    // Update factuality analysis
-    const factualityDiv = document.getElementById("factuality-result");
-    factualityDiv.textContent = `Verdict: ${
-      data.factuality_analysis.is_factual ? "Factual" : "Not Factual"
-    }`;
-    factualityDiv.className = data.factuality_analysis.is_factual
-      ? "factual"
-      : "not-factual";
-
-    document.getElementById("confidence").textContent = `Confidence: ${(
-      data.factuality_analysis.confidence * 100
-    ).toFixed(1)}%`;
-
-    document.getElementById(
-      "reasoning"
-    ).textContent = `Reasoning: ${data.factuality_analysis.reasoning}`;
-
-    // Update sources
-    const sourcesDiv = document.getElementById("sources");
-    sourcesDiv.innerHTML = data.search_results.sources
-      .map(
-        (source) => `
-          <div class="source">
-            <a href="${source.url}" target="_blank" class="source-link">${source.url}</a>
-            <p>${source.content}</p>
-          </div>
-        `
-      )
-      .join("<hr>");
+    // Update opposing evidence
+    const opposingDiv = document.getElementById("opposing-evidence");
+    opposingDiv.innerHTML = `
+      <div class="fact-check-analysis ${data.opposing_evidence.is_factual ? "factual" : "not-factual"}">
+        Verdict: ${data.opposing_evidence.is_factual ? "Factual" : "Not Factual"}
+      </div>
+      <div><strong>Confidence:</strong> ${(data.opposing_evidence.confidence * 100).toFixed(1)}%</div>
+      <div><strong>Reasoning:</strong> ${data.opposing_evidence.reasoning}</div>
+      <div class="fact-check-section">
+        <div class="fact-check-heading">Sources</div>
+        <div class="fact-check-sources">
+          ${data.opposing_evidence.sources.map(source => `
+            <div class="fact-check-source">
+              <a href="${source.url}" target="_blank" class="fact-check-source-link">
+                ${source.url}
+              </a>
+              <p>${source.content}</p>
+            </div>
+          `).join("")}
+        </div>
+      </div>
+    `;
   }
 });
