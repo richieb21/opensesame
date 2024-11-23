@@ -1,1 +1,7 @@
 cohere
+langchain
+langchain-cohere
+langchain-community
+Flask
+Flask-CORS
+pydantic
