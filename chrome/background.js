@@ -1,54 +1,89 @@
 chrome.commands.onCommand.addListener(async (command) => {
   if (command === "process-selection") {
-    // Get the active tab
-    const [tab] = await chrome.tabs.query({
-      active: true,
-      currentWindow: true,
-    });
+    try {
+      // Get the active tab
+      console.log("Processing selection");
+      const [tab] = await chrome.tabs.query({
+        active: true,
+        currentWindow: true,
+      });
 
-    // Execute script to get selected text
-    chrome.scripting.executeScript(
-      {
-        target: { tabId: tab.id },
-        function: getSelectedText,
-      },
-      async (results) => {
-        const selectedText = results[0].result;
-        if (selectedText) {
-          callAPI(selectedText);
-        }
+      if (!tab?.id) {
+        throw new Error("No active tab found");
       }
-    );
+
+      // Execute script to get selected text
+      const results = await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: () => {
+          const selection = window.getSelection();
+          const selectedText = selection?.toString().trim() || "";
+          console.log("Selected text in page:", selectedText);
+          return selectedText;
+        },
+      });
+
+      // Check if we got text
+      const selectedText = results[0]?.result;
+      console.log("Selected text in background:", selectedText);
+
+      if (!selectedText) {
+        console.log("No text selected");
+        chrome.notifications.create({
+          type: "basic",
+          iconUrl: "icon48.png",
+          title: "Error",
+          message: "Please select some text first",
+        });
+        return;
+      }
+
+      await callAPI(selectedText);
+    } catch (error) {
+      console.error("Error:", error);
+      chrome.notifications.create({
+        type: "basic",
+        iconUrl: "icon48.png",
+        title: "Error",
+        message: `Failed to get selected text: ${error.message}`,
+      });
+    }
   }
 });
 
-function getSelectedText() {
-  return window.getSelection().toString();
-}
-
 async function callAPI(text) {
-  console.log(text);
+  const requestBody = {
+    query: text,
+  };
   try {
-    const response = await fetch("YOUR_API_ENDPOINT", {
+    const response = await fetch("http://localhost:3001/invoke", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ text: text }),
+      body: JSON.stringify(requestBody),
     });
 
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
     const data = await response.json();
-    // Handle the API response here
     console.log("API Response:", data);
 
-    // Optional: Show a notification with the result
     chrome.notifications.create({
       type: "basic",
       iconUrl: "icon48.png",
-      title: "API Response",
+      title: "Success",
       message: "Text processed successfully!",
     });
   } catch (error) {
     console.error("API Error:", error);
+    chrome.notifications.create({
+      type: "basic",
+      iconUrl: "icon48.png",
+      title: "Error",
+      message: `Failed to process text: ${error.message}`,
+    });
   }
 }
